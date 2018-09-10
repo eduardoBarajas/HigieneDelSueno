@@ -9,6 +9,7 @@ import android.widget.TextView;
 
 import com.barajasoft.higienedelsueo.Datos.PreocupacionEntity;
 import com.barajasoft.higienedelsueo.Datos.Sesion;
+import com.barajasoft.higienedelsueo.Listeners.DlgResult;
 import com.barajasoft.higienedelsueo.Listeners.OperationFinished;
 import com.barajasoft.higienedelsueo.R;
 
@@ -17,11 +18,11 @@ import java.util.List;
 
 public class PreocupacionesRVAdapater extends RecyclerView.Adapter<PreocupacionesRVAdapater.MyViewHolder>{
     List<PreocupacionEntity> preocupaciones = new LinkedList<>();
-    OperationFinished listener;
+    DlgResult listener;
 
     public PreocupacionesRVAdapater(){ }
 
-    public PreocupacionesRVAdapater(List<PreocupacionEntity> p, OperationFinished listener){
+    public PreocupacionesRVAdapater(List<PreocupacionEntity> p, DlgResult listener){
         preocupaciones = p;
         this.listener = listener;
     }
@@ -37,9 +38,7 @@ public class PreocupacionesRVAdapater extends RecyclerView.Adapter<Preocupacione
         PreocupacionEntity p = preocupaciones.get(position);
         holder.txtPreocupacion.setText(p.getPreocupacion());
         holder.txtPreocupacion.setOnClickListener(e->{
-            Sesion sesion = Sesion.getInstance();
-            sesion.setTiene_preocupaciones(1);
-            listener.finished("Adapter");
+            listener.result("PreocupacionesAdapter",1);
         });
     }
 
