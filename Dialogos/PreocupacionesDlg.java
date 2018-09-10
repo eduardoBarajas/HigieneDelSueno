@@ -13,6 +13,7 @@ import android.widget.Toast;
 import com.barajasoft.higienedelsueo.Adaptadores.PreocupacionesRVAdapater;
 import com.barajasoft.higienedelsueo.Datos.ConexionBDPreocupaciones;
 import com.barajasoft.higienedelsueo.Datos.PreocupacionEntity;
+import com.barajasoft.higienedelsueo.Listeners.DlgResult;
 import com.barajasoft.higienedelsueo.Listeners.OperationFinished;
 import com.barajasoft.higienedelsueo.R;
 
@@ -24,7 +25,7 @@ public class PreocupacionesDlg extends Dialog{
     List<PreocupacionEntity> preocupaciones = new LinkedList<>();
     PreocupacionesRVAdapater adapter;
     OperationFinished listener;
-    public PreocupacionesDlg(@NonNull Activity context) {
+    public PreocupacionesDlg(@NonNull Activity context, DlgResult listener) {
         super(context);
         setContentView(R.layout.preocupaciones_dlg_layout);
         Button btnAddPreocupacion = findViewById(R.id.addPreocupacionBtn);
@@ -41,36 +42,56 @@ public class PreocupacionesDlg extends Dialog{
         RecyclerView.LayoutManager manager = new LinearLayoutManager(context);
         rv.setLayoutManager(manager);
         rv.setItemAnimator(new DefaultItemAnimator());
-        listener = new OperationFinished() {
+        DlgResult lis = new DlgResult() {
             @Override
-            public void finished(String type) {
-                if(type.equals("Dialog")){
+            public void result(String dlgTag, Object res) {
+                if(dlgTag.equals("NewPreocupacionDialog")){
                     try {
                         preocupaciones = (List<PreocupacionEntity>) new ConexionBDPreocupaciones(context).execute("getAll").get();
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                    } catch (ExecutionException e) {
-                        e.printStackTrace();
+                    } catch (Exception e) {
+                        Log.e("error",e.getMessage());
                     }
-                    adapter = new PreocupacionesRVAdapater(preocupaciones,listener);
+                    adapter = new PreocupacionesRVAdapater(preocupaciones,this);
                     rv.setAdapter(adapter);
                 }
-                if(type.equals("Adapter")){
+                if(dlgTag.equals("PreocupacionesAdapter")){
                     Toast.makeText(context,"Seleccionaste una preocupacion!",Toast.LENGTH_SHORT).show();
+                    listener.result("PreocupacionesDlg",res);
                     dismiss();
+
                 }
             }
         };
+//        listener = new OperationFinished() {
+//            @Override
+//            public void finished(String type) {
+//                if(type.equals("Dialog")){
+//                    try {
+//                        preocupaciones = (List<PreocupacionEntity>) new ConexionBDPreocupaciones(context).execute("getAll").get();
+//                    } catch (InterruptedException e) {
+//                        e.printStackTrace();
+//                    } catch (ExecutionException e) {
+//                        e.printStackTrace();
+//                    }
+//                    adapter = new PreocupacionesRVAdapater(preocupaciones,listener);
+//                    rv.setAdapter(adapter);
+//                }
+//                if(type.equals("Adapter")){
+//                    Toast.makeText(context,"Seleccionaste una preocupacion!",Toast.LENGTH_SHORT).show();
+//                    dismiss();
+//                }
+//            }
+//        };
         if(preocupaciones==null){
             Log.e("ERROR","ESTABA VACIO AL PARECER");
             adapter = new PreocupacionesRVAdapater();
         }else{
-            adapter = new PreocupacionesRVAdapater(preocupaciones,listener);
+            adapter = new PreocupacionesRVAdapater(preocupaciones,lis);
             Log.e("NO_ERROR","NO ESTABA VACIO AL PARECER");
         }
         rv.setAdapter(adapter);
         btnAddPreocupacion.setOnClickListener(e->{
-            AddNewPreocupacionDlg dlg = new AddNewPreocupacionDlg(context,listener);
+            AddNewPreocupacionDlg dlg = new AddNewPreocupacionDlg(context,lis);
             dlg.show();
         });
     }
