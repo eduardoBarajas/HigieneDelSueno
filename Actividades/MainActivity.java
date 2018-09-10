@@ -177,6 +177,8 @@ import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.nfc.NfcAdapter;
 import android.nfc.tech.NfcA;
+import android.support.constraint.ConstraintLayout;
+import android.support.design.widget.Snackbar;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -195,11 +197,15 @@ import com.barajasoft.higienedelsueo.Datos.ConexionBDRegistrosDelSueno;
 import com.barajasoft.higienedelsueo.Datos.Configuracion;
 import com.barajasoft.higienedelsueo.Datos.RegistroEntity;
 import com.barajasoft.higienedelsueo.Datos.SensoresVal;
+import com.barajasoft.higienedelsueo.Datos.Sesion;
+import com.barajasoft.higienedelsueo.Dialogos.DlgRitmoCardiaco;
 import com.barajasoft.higienedelsueo.Dialogos.NivelEstresDlg;
 import com.barajasoft.higienedelsueo.Dialogos.PreocupacionesDlg;
 import com.barajasoft.higienedelsueo.Entidades.CurrentTime;
 import com.barajasoft.higienedelsueo.Entidades.Paciente;
 import com.barajasoft.higienedelsueo.HeartRateMonitor;
+import com.barajasoft.higienedelsueo.Listeners.DlgResult;
+import com.barajasoft.higienedelsueo.Listeners.OperationFinished;
 import com.barajasoft.higienedelsueo.R;
 import com.barajasoft.higienedelsueo.Servicios.IluminationService;
 import com.barajasoft.higienedelsueo.Servicios.NoiseService;
@@ -231,14 +237,26 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private TextView txtNombre,txtSexo,txtHoraDespertar,txtHoraDormir;
     private Configuracion configuracion;
     private SensoresVal valores_sensores;
+    private Queue<String> hora_mediciones;
+    private boolean medicionRealizada = false;
+    private boolean despierto = false;
+    private boolean dormido = false;
+    private boolean encuesta_contestada = false;
+    private int numeroMedicionesRealizadas = 0;
+    private ConstraintLayout root;
+    private ArrayList<String[]> horas = new ArrayList<>();
+    private DlgResult listener;
+    private Sesion currentSesion;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        currentSesion = Sesion.getInstance();
         valores_sensores = SensoresVal.getInstance();
         //Obtener configuracion inicial
         configuracion = new Configuracion();
         setContentView(R.layout.activity_main);
+        root = findViewById(R.id.root);
 
         Button btn1 = findViewById(R.id.button2);
         Button btn2 = findViewById(R.id.button3);
@@ -246,6 +264,17 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
         CurrentTime time = CurrentTime.getInstance(getApplicationContext());
         time.addObserver(this);
+
+        listener = new DlgResult() {
+            @Override
+            public void result(String dlgTag, Object res) {
+                switch (dlgTag){
+                    case "dlg_ritmo_cardiaco":medicionRealizada = true;currentSesion.setMeds_cardiacos(numeroMedicionesRealizadas,Integer.parseInt((String)res));break;
+                    case "PreocupacionesDlg":encuesta_contestada = true;currentSesion.setTiene_preocupaciones(Integer.parseInt((String)res));break;
+                    case "NivelEstresDlg":currentSesion.setNivel_estres(numeroMedicionesRealizadas,(String)res);break;
+                }
+            }
+        };
 
         btn1.setOnClickListener(e->{
 //            RegistroEntity nuevo = new RegistroEntity();
@@ -260,11 +289,15 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 ////            nuevo.setHora_en_que_durmio("01:30");
 ////            new ConexionBDRegistrosDelSueno(getApplicationContext()).execute("addRegistro",nuevo);
 ////            Log.e("Entro","SEGUN SE AGREGA");
+
+//            horas.remove(0);
+//            hora_mediciones.remove(hora_mediciones.peek());
+//            medicionRealizada = false;
+//            numeroMedicionesRealizadas++;
         });
         btn2.setOnClickListener(e->{
             try {
                 List<RegistroEntity> registros = (List<RegistroEntity>) new ConexionBDRegistrosDelSueno(getApplicationContext()).execute("getAllByName","Eduardo").get();
-                Log.e("Entro","AQUIIIIIiiXXXXXXXX2");
                 for(RegistroEntity r: registros){
                     Log.e("Entro","AQUIIIIIii");
                     textView.setText(textView.getText()+" "+String.valueOf(r.getId_registro())+" "+r.getNombre()+" "+r.getDespertar()+" "+r.getHora_en_que_desperto());
@@ -283,7 +316,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         loadPaciente();
 
         //crear pila con los horarios en que se debe checar el paciente
-        Queue<String> hora_mediciones = new LinkedList<>();
+        hora_mediciones = new LinkedList<>();
         for(int i=4;i>0;i--){
             if(Integer.parseInt(pacienteActual.getHora_dormir().split(":")[0])-i<0){
                 hora_mediciones.add(String.valueOf(24+(Integer.parseInt(pacienteActual.getHora_dormir().split(":")[0])-i))+":"+pacienteActual.getHora_dormir().split(":")[1]);
@@ -313,20 +346,21 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
         for(String hora: hora_mediciones){
             Log.e("HoraMedicion",hora);
+            //quitar esto al final
+            //horas.add(new String[]{hora.split(":")[0],String.valueOf(Integer.parseInt(hora.split(":")[1])+1)});
         }
 
         Log.e("tope",hora_mediciones.peek());
 
-
         Button btnPreocupaciones = findViewById(R.id.button4);
         btnPreocupaciones.setOnClickListener(e->{
-            PreocupacionesDlg dlg = new PreocupacionesDlg(MainActivity.this);
+            PreocupacionesDlg dlg = new PreocupacionesDlg(MainActivity.this,listener);
             dlg.show();
         });
 
         Button btnNivelEstres = findViewById(R.id.button5);
         btnNivelEstres.setOnClickListener(e->{
-            NivelEstresDlg dlg = new NivelEstresDlg(MainActivity.this);
+            NivelEstresDlg dlg = new NivelEstresDlg(MainActivity.this,listener);
             dlg.show();
         });
 
@@ -474,18 +508,94 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         return true;
     }
 
-
     @Override
     public void update(Observable observable, Object o) {
         String[] hora = (String[])o;
+//        for(String[] h:horas){
+//            Log.e("Hora actual",h[0]+":"+h[1]);
+//        }
+//        String[] hora = horas.get(0);
         Log.e("Hora Actual",hora[0]+":"+hora[1]);
-        int horaDormir = Integer.parseInt(pacienteActual.getHora_dormir().split(":")[0])*60;
-        horaDormir += Integer.parseInt(pacienteActual.getHora_dormir().split(":")[1]);
-        int horaActual = (Integer.parseInt(hora[0])*60)+Integer.parseInt(hora[1]);
+        int horaDormir = Integer.parseInt(pacienteActual.getHora_dormir().split(":")[0])*60 + Integer.parseInt(pacienteActual.getHora_dormir().split(":")[1]);
+        int horaDespertar = Integer.parseInt(pacienteActual.getHora_despertar().split(":")[0])*60 + Integer.parseInt(pacienteActual.getHora_despertar().split(":")[1]);
+        int horaActualMedicion = (Integer.parseInt(hora_mediciones.peek().split(":")[0])*60)+Integer.parseInt(hora_mediciones.peek().split(":")[1]);
+        int horaActual = Integer.parseInt(hora[0])*60+Integer.parseInt(hora[1]);
+        int horaActualMedicionMasUnaHora = (Integer.parseInt(hora_mediciones.peek().split(":")[0])*60+60)+Integer.parseInt(hora_mediciones.peek().split(":")[1]);
+
+        if(numeroMedicionesRealizadas<4){
+            Log.e("sesionEstres",currentSesion.getNivel_estres()[numeroMedicionesRealizadas]);
+            Log.e("sesion ritmo",String.valueOf(currentSesion.getMeds_cardiacos()[numeroMedicionesRealizadas]));
+        }
+        Log.e("sesionPreocupaciones",String.valueOf(currentSesion.getTiene_preocupaciones()));
+
+
+        Log.e("Hora Actual",String.valueOf(horaActual));
+        Log.e("Hora Actual",hora[0]+":"+hora[1]);
+        Log.e("Hora Dormir",String.valueOf(horaDormir));
+        Log.e("Hora Dormir",pacienteActual.getHora_dormir().split(":")[0]+":"+pacienteActual.getHora_dormir().split(":")[1]);
+        Log.e("Hora Despertar",String.valueOf(horaDespertar));
+        Log.e("Hora Despertar",pacienteActual.getHora_despertar());
+        Log.e("Hora Actual Medicion",String.valueOf(horaActualMedicion));
+        Log.e("Hora Actual Medicion",hora_mediciones.peek());
+        Log.e("Hora Adelantada ",String.valueOf(horaActualMedicionMasUnaHora));
+
 
         Log.e("SONIDO ACTUAL",String.valueOf(valores_sensores.getDb()));
         Log.e("ILUMINACION ACTUAL",String.valueOf(valores_sensores.getLux()));
         Log.e("POSICION ACTUAL",String.valueOf(valores_sensores.getPosicionX())+" "+String.valueOf(valores_sensores.getPosicionY()));
+        //Si son 4horas antes de dormir entonces entra
+        broadcastIntent("Medicion de ritmo cardiaco");
+        if(horaActual >= (horaDormir-(4*60))){
+            Log.e("Faltan","4 horas para dormir");
+            if((horaActual+30)>=horaDormir || horaActual<=(horaDespertar-30)){
+                //entonces son las mediciones de media hora
+                if((horaActual+30)>=horaDormir){
+                    //antes de dormir
+                    if(!encuesta_contestada){
+                        Snackbar.make(root,"Se realiza la encuesta de preocupaciones",Snackbar.LENGTH_SHORT).show();
+                        PreocupacionesDlg dlg = new PreocupacionesDlg(this,listener);
+                        dlg.show();
+                    }
+                    Snackbar.make(root,"Se inician los sensores",Snackbar.LENGTH_SHORT).show();
+                }else{
+                    //antes de despertar
+                    Snackbar.make(root,"Se checan los sensores",Snackbar.LENGTH_SHORT).show();
+                }
+            }else{
+                if(horaActual >= horaActualMedicion && horaActual < horaActualMedicionMasUnaHora && numeroMedicionesRealizadas < 4){
+                    if(!medicionRealizada){
+                        //pedir medicion cardiaca
+                        NivelEstresDlg dlg = new NivelEstresDlg(this,listener);
+                        dlg.setOnDismissListener(e->{
+                            Snackbar.make(root,"Se realiza medicion numero "+String.valueOf(numeroMedicionesRealizadas)+" del ritmo cardiaco",Snackbar.LENGTH_SHORT).show();
+                            DlgRitmoCardiaco dlgRitmoCardiaco = new DlgRitmoCardiaco(this,listener);
+                            dlgRitmoCardiaco.show();
+                        });
+                        dlg.show();
+                    }
+                }else{
+                    if(horaActual == horaActualMedicionMasUnaHora){
+                        hora_mediciones.remove(hora_mediciones.peek());
+                        horas.remove(0);
+                        numeroMedicionesRealizadas++;
+                        medicionRealizada = false;
+                    }
+                }
+            }
+        }
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        Toast.makeText(getApplicationContext(),"Se entro con la notificacion",Toast.LENGTH_SHORT).show();
+    }
+
+    private void broadcastIntent(String type) {
+        Intent intent = new Intent();
+        intent.putExtra("tipo",type);
+        intent.setAction("android.intent.action.NUEVA_MEDICION");
+        sendBroadcast(intent);
     }
 
 }
