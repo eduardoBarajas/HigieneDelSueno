@@ -44,4 +44,11 @@ public class Sesion {
     public void setMeds_cardiacos(int index, int ritmo) {
         this.meds_cardiacos[index] = ritmo;
     }
+
+    public void resetSesion(){
+        paciente = null;
+        meds_cardiacos = new Integer[]{0,0,0,0};
+        tiene_preocupaciones = 0;
+        nivel_estres = new String[]{"","","",""};
+    }
 }

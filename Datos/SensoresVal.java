@@ -2,7 +2,7 @@ package com.barajasoft.higienedelsueo.Datos;
 
 public class SensoresVal {
     private double db;
-    private float lux;
+    private double lux;
     private float posicionX;
     private float posicionY;
 
@@ -27,11 +27,11 @@ public class SensoresVal {
         this.db = db;
     }
 
-    public float getLux() {
+    public double getLux() {
         return lux;
     }
 
-    public void setLux(float lux) {
+    public void setLux(double lux) {
         this.lux = lux;
     }
 

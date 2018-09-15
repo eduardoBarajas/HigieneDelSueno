@@ -210,6 +210,8 @@ import com.barajasoft.higienedelsueo.R;
 import com.barajasoft.higienedelsueo.Servicios.IluminationService;
 import com.barajasoft.higienedelsueo.Servicios.NoiseService;
 
+import org.w3c.dom.Text;
+
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
@@ -234,7 +236,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private float[] previousPosition = {0,0};
     private Paciente pacienteActual;
     private CameraConfig cameraConfig;
-    private TextView txtNombre,txtSexo,txtHoraDespertar,txtHoraDormir;
+    private TextView txtNombre,txtSexo,txtHoraDespertar,txtHoraDormir,txtEdad;
     private Configuracion configuracion;
     private SensoresVal valores_sensores;
     private Queue<String> hora_mediciones;
@@ -247,6 +249,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private ArrayList<String[]> horas = new ArrayList<>();
     private DlgResult listener;
     private Sesion currentSesion;
+    private boolean noiseServiceStarted = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -257,13 +260,14 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         configuracion = new Configuracion();
         setContentView(R.layout.activity_main);
         root = findViewById(R.id.root);
-
+        txtEdad = findViewById(R.id.txtEdadMain);
         Button btn1 = findViewById(R.id.button2);
         Button btn2 = findViewById(R.id.button3);
         TextView textView = findViewById(R.id.textView2);
 
         CurrentTime time = CurrentTime.getInstance(getApplicationContext());
         time.addObserver(this);
+
 
         listener = new DlgResult() {
             @Override
@@ -314,43 +318,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         txtHoraDespertar = findViewById(R.id.txtHoraDespertarMain);
         txtHoraDormir = findViewById(R.id.txtHoraDormirMain);
         loadPaciente();
-
-        //crear pila con los horarios en que se debe checar el paciente
-        hora_mediciones = new LinkedList<>();
-        for(int i=4;i>0;i--){
-            if(Integer.parseInt(pacienteActual.getHora_dormir().split(":")[0])-i<0){
-                hora_mediciones.add(String.valueOf(24+(Integer.parseInt(pacienteActual.getHora_dormir().split(":")[0])-i))+":"+pacienteActual.getHora_dormir().split(":")[1]);
-            }else{
-                hora_mediciones.add(String.valueOf(Integer.parseInt(pacienteActual.getHora_dormir().split(":")[0])-i)+":"+pacienteActual.getHora_dormir().split(":")[1]);
-            }
-        }
-        int mediaHoraAntesDormir = 0;
-        if(Integer.parseInt(pacienteActual.getHora_dormir().split(":")[0])==0 && Integer.parseInt(pacienteActual.getHora_dormir().split(":")[1])-30 < 0){
-            int res = Integer.parseInt(pacienteActual.getHora_dormir().split(":")[1])-30;
-            mediaHoraAntesDormir = 24*60+res;
-        }else{
-            mediaHoraAntesDormir = Integer.parseInt(pacienteActual.getHora_dormir().split(":")[0])*60+Integer.parseInt(pacienteActual.getHora_dormir().split(":")[1])-30;
-        }
-        hora_mediciones.add(String.valueOf(mediaHoraAntesDormir/60)+":"+String.valueOf(mediaHoraAntesDormir%60));
-
-        int mediaHoraAntesDespertar = 0;
-        if(Integer.parseInt(pacienteActual.getHora_despertar().split(":")[0])==0 && Integer.parseInt(pacienteActual.getHora_despertar().split(":")[1])-30 < 0){
-            int res = Integer.parseInt(pacienteActual.getHora_despertar().split(":")[1])-30;
-            mediaHoraAntesDespertar = 24*60+res;
-        }else{
-            mediaHoraAntesDespertar = Integer.parseInt(pacienteActual.getHora_despertar().split(":")[0])*60+Integer.parseInt(pacienteActual.getHora_despertar().split(":")[1])-30;
-        }
-        hora_mediciones.add(String.valueOf(mediaHoraAntesDespertar/60)+":"+String.valueOf(mediaHoraAntesDespertar%60));
-
-
-
-        for(String hora: hora_mediciones){
-            Log.e("HoraMedicion",hora);
-            //quitar esto al final
-            //horas.add(new String[]{hora.split(":")[0],String.valueOf(Integer.parseInt(hora.split(":")[1])+1)});
-        }
-
-        Log.e("tope",hora_mediciones.peek());
+        generarTiemposMediciones();
 
         Button btnPreocupaciones = findViewById(R.id.button4);
         btnPreocupaciones.setOnClickListener(e->{
@@ -391,7 +359,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 //        }
         iluminacion = sensorManager.getDefaultSensor(Sensor.TYPE_LIGHT);
         if(iluminacion != null){
-            sensorManager.registerListener(this,iluminacion,SensorManager.SENSOR_STATUS_ACCURACY_HIGH);
+            sensorManager.registerListener(this,iluminacion,SensorManager.SENSOR_DELAY_FASTEST);
         }else{
             Toast.makeText(getApplicationContext(),"No tiene sensor de luz!!",Toast.LENGTH_SHORT).show();
         }
@@ -401,16 +369,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         }else{
             Toast.makeText(getApplicationContext(),"No tiene acelerometro!!",Toast.LENGTH_SHORT).show();
         }
-    }
-
-    private void loadPaciente(){
-        configuracion.loadJson();
-        configuracion.parseJson();
-        pacienteActual = configuracion.getConf();
-        txtHoraDormir.setText(pacienteActual.getHora_dormir());
-        txtHoraDespertar.setText(pacienteActual.getHora_despertar());
-        txtSexo.setText(pacienteActual.getSexo());
-        txtNombre.setText(pacienteActual.getNombre());
     }
 
     @Override
@@ -423,6 +381,12 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             txtSexo.setText(conf[1]);
             txtHoraDespertar.setText(conf[3]);
             txtHoraDormir.setText(conf[2]);
+            pacienteActual = new Paciente(conf[0],conf[1],conf[2],conf[3]);
+            //reinicio las mediciones
+            currentSesion.resetSesion();
+            currentSesion.setPaciente(pacienteActual);
+            numeroMedicionesRealizadas = 0;
+            generarTiemposMediciones();
         }else{
             Toast.makeText(getApplicationContext(),"Cancelaste el cambio en la conf",Toast.LENGTH_SHORT).show();
         }
@@ -431,8 +395,10 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     @Override
     public void onSensorChanged(SensorEvent event){
         if(event.sensor.getType() == Sensor.TYPE_LIGHT){
-            if(previousValue > event.values[0] || previousValue < event.values[0])
+            if(previousValue > event.values[0] || previousValue < event.values[0]){
                 valores_sensores.setLux(event.values[0]);
+                Toast.makeText(this,"LUX:"+String.valueOf(event.values[0]),Toast.LENGTH_SHORT).show();
+            }
             previousValue = event.values[0];
         }
         if(event.sensor.getType() == Sensor.TYPE_ACCELEROMETER){
@@ -460,8 +426,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     @Override
     public void onResume() {
         super.onResume();
-        sensorManager.registerListener(this,iluminacion,SensorManager.SENSOR_DELAY_FASTEST);
-        sensorManager.registerListener(this,accelerometro,SensorManager.SENSOR_DELAY_FASTEST);
+        //si quiero que todo el tiempo esten funcionando los sensores activarlos aqui
+        activateSensors();
     }
 
     @Override
@@ -476,13 +442,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
     @Override
     protected void onDestroy(){
-        sensorManager.unregisterListener(this);
-        Alarm alarm = Alarm.getInstance();
-        alarm.cancelAlarm(getApplicationContext());
-        Log.e("ServicoAudio","SE cancelo");
-        CurrentTime timer = CurrentTime.getInstance(getApplicationContext());
-        timer.stop();
-        Log.e("Temporizador","SE cancelo");
+        //aqui parar los sensores para que cuando se cierre la aplicacion no sigan corriendo
+        stopSensors();
         super.onDestroy();
     }
 
@@ -500,7 +461,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                 Toast.makeText(this,"Configuracion seleccionada",Toast.LENGTH_SHORT).show();
                 Intent intent = new Intent(this,ConfiguracionInicial.class);
                 intent.putExtra("Conf",new String[]{pacienteActual.getNombre(),pacienteActual.getSexo(),pacienteActual.getHora_dormir()
-                ,pacienteActual.getHora_despertar()});
+                ,pacienteActual.getHora_despertar(),String.valueOf(pacienteActual.getEdad())});
                 startActivityForResult(intent,CONF_CHANGE);
                 break;
             default: break;
@@ -543,8 +504,13 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         Log.e("SONIDO ACTUAL",String.valueOf(valores_sensores.getDb()));
         Log.e("ILUMINACION ACTUAL",String.valueOf(valores_sensores.getLux()));
         Log.e("POSICION ACTUAL",String.valueOf(valores_sensores.getPosicionX())+" "+String.valueOf(valores_sensores.getPosicionY()));
-        //Si son 4horas antes de dormir entonces entra
+
+        Toast.makeText(this,"Sondio Actual: "+String.valueOf(valores_sensores.getDb())+"\n"+"Iluminacion Actual: "+String.valueOf(valores_sensores.getLux()) +"\n"+"Posicion Actual: \nX: "+String.valueOf(valores_sensores.getPosicionX())+"\nY: "+String.valueOf(valores_sensores.getPosicionY()),Toast.LENGTH_SHORT).show();
+
+        //quitar esta notificacion
         broadcastIntent("Medicion de ritmo cardiaco");
+
+        //Si son 4horas antes de dormir entonces entra
         if(horaActual >= (horaDormir-(4*60))){
             Log.e("Faltan","4 horas para dormir");
             if((horaActual+30)>=horaDormir || horaActual<=(horaDespertar-30)){
@@ -564,6 +530,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             }else{
                 if(horaActual >= horaActualMedicion && horaActual < horaActualMedicionMasUnaHora && numeroMedicionesRealizadas < 4){
                     if(!medicionRealizada){
+                        broadcastIntent("Medicion de ritmo cardiaco");
                         //pedir medicion cardiaca
                         NivelEstresDlg dlg = new NivelEstresDlg(this,listener);
                         dlg.setOnDismissListener(e->{
@@ -596,6 +563,77 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         intent.putExtra("tipo",type);
         intent.setAction("android.intent.action.NUEVA_MEDICION");
         sendBroadcast(intent);
+    }
+
+    private void generarTiemposMediciones(){
+        //crear pila con los horarios en que se debe checar el paciente
+        hora_mediciones = new LinkedList<>();
+        for(int i=4;i>0;i--){
+            if(Integer.parseInt(pacienteActual.getHora_dormir().split(":")[0])-i<0){
+                hora_mediciones.add(String.valueOf(24+(Integer.parseInt(pacienteActual.getHora_dormir().split(":")[0])-i))+":"+pacienteActual.getHora_dormir().split(":")[1]);
+            }else{
+                hora_mediciones.add(String.valueOf(Integer.parseInt(pacienteActual.getHora_dormir().split(":")[0])-i)+":"+pacienteActual.getHora_dormir().split(":")[1]);
+            }
+        }
+        int mediaHoraAntesDormir = 0;
+        if(Integer.parseInt(pacienteActual.getHora_dormir().split(":")[0])==0 && Integer.parseInt(pacienteActual.getHora_dormir().split(":")[1])-30 < 0){
+            int res = Integer.parseInt(pacienteActual.getHora_dormir().split(":")[1])-30;
+            mediaHoraAntesDormir = 24*60+res;
+        }else{
+            mediaHoraAntesDormir = Integer.parseInt(pacienteActual.getHora_dormir().split(":")[0])*60+Integer.parseInt(pacienteActual.getHora_dormir().split(":")[1])-30;
+        }
+        hora_mediciones.add(String.valueOf(mediaHoraAntesDormir/60)+":"+String.valueOf(mediaHoraAntesDormir%60));
+
+        int mediaHoraAntesDespertar = 0;
+        if(Integer.parseInt(pacienteActual.getHora_despertar().split(":")[0])==0 && Integer.parseInt(pacienteActual.getHora_despertar().split(":")[1])-30 < 0){
+            int res = Integer.parseInt(pacienteActual.getHora_despertar().split(":")[1])-30;
+            mediaHoraAntesDespertar = 24*60+res;
+        }else{
+            mediaHoraAntesDespertar = Integer.parseInt(pacienteActual.getHora_despertar().split(":")[0])*60+Integer.parseInt(pacienteActual.getHora_despertar().split(":")[1])-30;
+        }
+        hora_mediciones.add(String.valueOf(mediaHoraAntesDespertar/60)+":"+String.valueOf(mediaHoraAntesDespertar%60));
+
+
+
+        for(String hora: hora_mediciones){
+            Log.e("HoraMedicion",hora);
+            //quitar esto al final
+            //horas.add(new String[]{hora.split(":")[0],String.valueOf(Integer.parseInt(hora.split(":")[1])+1)});
+        }
+
+        Log.e("tope",hora_mediciones.peek());
+    }
+
+    private void activateSensors(){
+        sensorManager.registerListener(this,iluminacion,SensorManager.SENSOR_DELAY_FASTEST);
+        sensorManager.registerListener(this,accelerometro,SensorManager.SENSOR_DELAY_FASTEST);
+        if(!noiseServiceStarted){
+            Intent intent = new Intent(this,NoiseService.class);
+            startService(intent);
+            noiseServiceStarted = true;
+        }
+    }
+
+    private void stopSensors(){
+        sensorManager.unregisterListener(this);
+        Alarm alarm = Alarm.getInstance();
+        alarm.cancelAlarm(getApplicationContext());
+        Log.e("ServicoAudio","SE cancelo");
+        CurrentTime timer = CurrentTime.getInstance(getApplicationContext());
+        timer.stop();
+        Log.e("Temporizador","SE cancelo");
+    }
+
+    private void loadPaciente(){
+        configuracion.loadJson();
+        configuracion.parseJson();
+        pacienteActual = configuracion.getConf();
+        txtHoraDormir.setText(pacienteActual.getHora_dormir());
+        txtHoraDespertar.setText(pacienteActual.getHora_despertar());
+        txtSexo.setText(pacienteActual.getSexo());
+        txtNombre.setText(pacienteActual.getNombre());
+        txtEdad.setText(String.valueOf(pacienteActual.getEdad()));
+        currentSesion.setPaciente(pacienteActual);
     }
 
 }

@@ -20,7 +20,7 @@ import static android.view.KeyEvent.KEYCODE_BACK;
 public class ConfiguracionInicial extends AppCompatActivity {
     private Button btnHombre, btnMujer, btnGuardar;
     private TimePicker dormir, despertar;
-    private EditText txtNombre;
+    private EditText txtNombre,txtEdad;
     private String horaDormir = "", horaDespertar = "", sexo = "";
     private int RESULT_CODE = 0;
     @Override
@@ -28,6 +28,7 @@ public class ConfiguracionInicial extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         Configuracion configuracion = new Configuracion();
         setContentView(R.layout.first_init_layout);
+        txtEdad = findViewById(R.id.txtEdad);
         txtNombre = findViewById(R.id.txtNombreEdit);
         dormir = findViewById(R.id.timePicker2);
         dormir.setIs24HourView(true);
@@ -60,9 +61,10 @@ public class ConfiguracionInicial extends AppCompatActivity {
                 despertar.setMinute(Integer.valueOf(tiempoDespertar[1]));
                 horaDespertar = conf[3];
             }
+            txtEdad.setText(conf[4]);
         }
         btnGuardar.setOnClickListener(e->{
-            if(!horaDormir.isEmpty() && !horaDespertar.isEmpty() && !sexo.isEmpty() && !txtNombre.getText().toString().isEmpty()){
+            if(!horaDormir.isEmpty() && !horaDespertar.isEmpty() && !sexo.isEmpty() && !txtNombre.getText().toString().isEmpty()&& !txtEdad.getText().toString().isEmpty()){
                 if(getIntent().hasExtra("Conf")){
                     configuracion.deleteConfiguration();
                     createJson(configuracion);
@@ -122,6 +124,7 @@ public class ConfiguracionInicial extends AppCompatActivity {
             obj.put("Sexo",sexo);
             obj.put("Hora_Dormir",horaDormir);
             obj.put("Hora_Despertar",horaDespertar);
+            obj.put("Edad",txtEdad.getText().toString());
         }catch (Exception ex){
             Log.e("Error","Al crear el json");
         }

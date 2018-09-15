@@ -81,6 +81,7 @@ public class Configuracion {
             conf.setSexo(jsonObject.getString("Sexo"));
             conf.setHora_despertar(jsonObject.getString("Hora_Despertar"));
             conf.setHora_dormir(jsonObject.getString("Hora_Dormir"));
+            conf.setEdad(jsonObject.getInt("Edad"));
         }catch (Exception ex){
             Log.e("Error en el parsing",ex.getMessage());
         }

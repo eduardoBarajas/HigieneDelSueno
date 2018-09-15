@@ -5,6 +5,7 @@ public class Paciente {
     private String sexo;
     private String hora_dormir;
     private String hora_despertar;
+    private int edad;
     public Paciente(){}
 
     public Paciente(String nom,String sex,String dormir,String despertar){
@@ -12,6 +13,7 @@ public class Paciente {
         sexo = sex;
         hora_dormir = dormir;
         hora_despertar = despertar;
+        edad = 0;
     }
 
     public String getNombre() {
@@ -44,5 +46,13 @@ public class Paciente {
 
     public void setHora_despertar(String hora_despertar) {
         this.hora_despertar = hora_despertar;
+    }
+
+    public int getEdad() {
+        return edad;
+    }
+
+    public void setEdad(int edad) {
+        this.edad = edad;
     }
 }
