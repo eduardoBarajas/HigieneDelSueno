@@ -19,6 +19,8 @@ public class Time extends BroadcastReceiver {
         SimpleDateFormat format = new SimpleDateFormat("kk:mm");
         format.setTimeZone(TimeZone.getTimeZone("GMT-7:00"));
         String[] fecha = format.format(calendar.getTime()).split(":");
+        if(fecha[0].equals("24"))
+            fecha[0] = "0";
         time.setCurrentTime(fecha[0],fecha[1]);
     }
 }
