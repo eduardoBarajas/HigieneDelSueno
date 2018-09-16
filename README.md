@@ -1,2 +1,2 @@
 # HigieneDelSueno
-Este repositorio es para llevar el control del sistema para mis ayudantes dentro de la universidad.
+Este repositorio es para llevar el control del sistema para mis ayudantias dentro de la universidad.
