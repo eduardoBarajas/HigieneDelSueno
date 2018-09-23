@@ -22,22 +22,15 @@ import java.util.List;
 import java.util.concurrent.ExecutionException;
 
 public class PreocupacionesDlg extends Dialog{
-    List<PreocupacionEntity> preocupaciones = new LinkedList<>();
     PreocupacionesRVAdapater adapter;
-    OperationFinished listener;
     public PreocupacionesDlg(@NonNull Activity context, DlgResult listener) {
         super(context);
         setContentView(R.layout.preocupaciones_dlg_layout);
-        Button btnAddPreocupacion = findViewById(R.id.addPreocupacionBtn);
-
-        try {
-            preocupaciones = (List<PreocupacionEntity>) new ConexionBDPreocupaciones(context).execute("getAll").get();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        } catch (ExecutionException e) {
-            e.printStackTrace();
-        }
-
+        Button btnSinPreocupacions = findViewById(R.id.btnSinPreocupaciones);
+        btnSinPreocupacions.setOnClickListener(e->{
+            listener.result("PreocupacionesDlg","0");
+            dismiss();
+        });
         RecyclerView rv = findViewById(R.id.recyclerViewPreocupaciones);
         RecyclerView.LayoutManager manager = new LinearLayoutManager(context);
         rv.setLayoutManager(manager);
@@ -45,54 +38,27 @@ public class PreocupacionesDlg extends Dialog{
         DlgResult lis = new DlgResult() {
             @Override
             public void result(String dlgTag, Object res) {
-                if(dlgTag.equals("NewPreocupacionDialog")){
-                    try {
-                        preocupaciones = (List<PreocupacionEntity>) new ConexionBDPreocupaciones(context).execute("getAll").get();
-                    } catch (Exception e) {
-                        Log.e("error",e.getMessage());
-                    }
-                    adapter = new PreocupacionesRVAdapater(preocupaciones,this);
-                    rv.setAdapter(adapter);
-                }
                 if(dlgTag.equals("PreocupacionesAdapter")){
                     Toast.makeText(context,"Seleccionaste una preocupacion!",Toast.LENGTH_SHORT).show();
                     listener.result("PreocupacionesDlg",res);
                     dismiss();
-
                 }
             }
         };
-//        listener = new OperationFinished() {
-//            @Override
-//            public void finished(String type) {
-//                if(type.equals("Dialog")){
-//                    try {
-//                        preocupaciones = (List<PreocupacionEntity>) new ConexionBDPreocupaciones(context).execute("getAll").get();
-//                    } catch (InterruptedException e) {
-//                        e.printStackTrace();
-//                    } catch (ExecutionException e) {
-//                        e.printStackTrace();
-//                    }
-//                    adapter = new PreocupacionesRVAdapater(preocupaciones,listener);
-//                    rv.setAdapter(adapter);
-//                }
-//                if(type.equals("Adapter")){
-//                    Toast.makeText(context,"Seleccionaste una preocupacion!",Toast.LENGTH_SHORT).show();
-//                    dismiss();
-//                }
-//            }
-//        };
-        if(preocupaciones==null){
-            Log.e("ERROR","ESTABA VACIO AL PARECER");
-            adapter = new PreocupacionesRVAdapater();
-        }else{
-            adapter = new PreocupacionesRVAdapater(preocupaciones,lis);
-            Log.e("NO_ERROR","NO ESTABA VACIO AL PARECER");
-        }
+        adapter = new PreocupacionesRVAdapater(getPreocupaciones(),lis);
         rv.setAdapter(adapter);
-        btnAddPreocupacion.setOnClickListener(e->{
-            AddNewPreocupacionDlg dlg = new AddNewPreocupacionDlg(context,lis);
-            dlg.show();
-        });
+    }
+
+    private List<PreocupacionEntity> getPreocupaciones() {
+        List<PreocupacionEntity> preocupaciones = new LinkedList<>();
+        String[] p = new String[]{"Tengo que recoger a los niños","Cita con el medico","Ir al banco","La casa esta desordenada",
+                "Tareas del dia siguiente","Tengo que hablar con un familiar", "Discusiones con amigos/pareja",
+                "Quedan pocas horas hasta que suene el despertador"};
+        for(String s: p){
+            PreocupacionEntity e = new PreocupacionEntity();
+            e.setPreocupacion(s);
+            preocupaciones.add(e);
+        }
+        return preocupaciones;
     }
 }

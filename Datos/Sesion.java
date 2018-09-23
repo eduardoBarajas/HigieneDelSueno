@@ -2,12 +2,18 @@ package com.barajasoft.higienedelsueo.Datos;
 
 import com.barajasoft.higienedelsueo.Entidades.Paciente;
 
+import java.util.LinkedList;
+import java.util.List;
+
 public class Sesion {
     private Paciente paciente;
     private Integer[] meds_cardiacos = new Integer []{0,0,0,0};
     private int tiene_preocupaciones = 0;
     private String[] nivel_estres = new String[]{"","","","",""};
+    private int esta_drogado = 0;
     private static Sesion instance = null;
+    private List<Double> dBSounds = new LinkedList<>();
+    private List<Double> luxLevels = new LinkedList<>();
     public static Sesion getInstance(){
         if(instance==null)
             instance = new Sesion();
@@ -50,5 +56,30 @@ public class Sesion {
         meds_cardiacos = new Integer[]{0,0,0,0};
         tiene_preocupaciones = 0;
         nivel_estres = new String[]{"","","",""};
+        esta_drogado = 0;
+        luxLevels.clear();
+        dBSounds.clear();
+    }
+
+    public boolean getEsta_drogado() {
+        return esta_drogado==1;
+    }
+
+    public void setEsta_drogado(int esta_drogado) {
+        this.esta_drogado = esta_drogado;
+    }
+
+    public void addMedicionLux(double m){
+        luxLevels.add(m);
+    }
+    public void addMediciondB(double m){
+        dBSounds.add(m);
+    }
+
+    public List<Double> getMedicionesLux(){
+        return luxLevels;
+    }
+    public List<Double> getMedicionesdB(){
+        return dBSounds;
     }
 }

@@ -39,7 +39,7 @@ public class CurrentTime extends Observable {
         Intent i = new Intent(context, Time.class);
         PendingIntent pi = PendingIntent.getBroadcast(context, 123, i, 0);
         //am.setRepeating(AlarmManager.RTC_WAKEUP, System.currentTimeMillis(), 1000*60*10, pi);
-        am.setRepeating(AlarmManager.RTC_WAKEUP, System.currentTimeMillis(), 60000, pi);
+        am.setRepeating(AlarmManager.RTC_WAKEUP, System.currentTimeMillis(), (1000)*60, pi);
     }
 
     public String getCurrentHour() {

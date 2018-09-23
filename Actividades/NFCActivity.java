@@ -13,6 +13,8 @@ import android.os.Parcelable;
 import android.support.annotation.Nullable;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
+import android.view.View;
+import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -28,6 +30,7 @@ public class NFCActivity extends AppCompatActivity{
     private String[][] techList;
     private PendingIntent nfcPendingIntent;
     private TextView mensaje;
+    private ImageView img;
 
     private Sesion sesion_actual;
     private CurrentTime tiempo_actual;
@@ -38,6 +41,7 @@ public class NFCActivity extends AppCompatActivity{
         sesion_actual = Sesion.getInstance();
         tiempo_actual = CurrentTime.getInstance(getApplicationContext());
         setContentView(R.layout.nfc_layout_activity);
+        img = findViewById(R.id.imageView2);
         mensaje = findViewById(R.id.textView12);
         Intent nfcIntent = new Intent(this,getClass());
         nfcIntent.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
@@ -74,11 +78,15 @@ public class NFCActivity extends AppCompatActivity{
         Log.e("Tiempo Actual",tiempo_actual.getCurrentHour()+":"+tiempo_actual.getCurrentMinute());
         Log.e("Tiempo Dormir",String.valueOf(horaDormir));
         Log.e("Tiempo Dormir",sesion_actual.getPaciente().getHora_dormir());
-
         if(tiempoActual >= horaDormir && tiempoActual <= (horaDormir+(4*60))){
-            //Se configura el foreground dispatcher
-            nfcAdapter.enableForegroundDispatch(this,nfcPendingIntent,filter,null);
-            handleIntent(getIntent());
+            if(!sesion_actual.getEsta_drogado()){
+                //Se configura el foreground dispatcher
+                nfcAdapter.enableForegroundDispatch(this,nfcPendingIntent,filter,null);
+                handleIntent(getIntent());
+            }else{
+                Toast.makeText(this,"Ya se registro al menos una sustancia de dopado.",Toast.LENGTH_SHORT).show();
+                finish();
+            }
         }else{
             Toast.makeText(this,"No se puede registrar la etiqueta, procura que sea dentro de las cuatro horas antes de dormir",Toast.LENGTH_SHORT).show();
             finish();
@@ -112,7 +120,21 @@ public class NFCActivity extends AppCompatActivity{
                     int len = status & 0x3F;
                     try{
                         String content = new String(record.getPayload(),len+1,record.getPayload().length - 1 - len, encString);
-                        mensaje.setText(content);
+                        if(content.equals("cafe")){
+                            img.setVisibility(View.VISIBLE);
+                            img.setImageResource(R.drawable.coffe);
+                            mensaje.setText("Se detecto la siguiente sustancia:\n"+content);
+                        }else{
+                            if(content.equals("Alcohol")){
+                                img.setVisibility(View.VISIBLE);
+                                img.setImageResource(R.drawable.alcohol);
+                                mensaje.setText("Se detecto la siguiente sustancia:\n"+content);
+                            }else{
+                                img.setVisibility(View.INVISIBLE);
+                                mensaje.setText("Esta etiqueta no tiene soporte actualmente:\n"+content);
+                            }
+                        }
+
                     }catch (Exception ex){
                         Log.e("error",ex.getMessage());
                     }

@@ -1,6 +1,7 @@
 package com.barajasoft.higienedelsueo.Actividades;
 
 import android.content.Intent;
+import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
@@ -41,6 +42,14 @@ public class ConfiguracionInicial extends AppCompatActivity {
             String[] conf = getIntent().getStringArrayExtra("Conf");
             txtNombre.setText(conf[0]);
             sexo = conf[1];
+            if(sexo.equals("Hombre")){
+                btnHombre.setBackgroundColor(getResources().getColor(R.color.colorAccent));
+                btnMujer.setBackgroundColor(Color.DKGRAY);
+            }else{
+                btnMujer.setBackgroundColor(getResources().getColor(R.color.colorAccent));
+                btnHombre.setBackgroundColor(Color.DKGRAY);
+            }
+
             String[] tiempoDormir = conf[2].split(":");
             if(Build.VERSION.SDK_INT < 23){
                 dormir.setCurrentHour(Integer.valueOf(tiempoDormir[0]));
@@ -65,17 +74,23 @@ public class ConfiguracionInicial extends AppCompatActivity {
         }
         btnGuardar.setOnClickListener(e->{
             if(!horaDormir.isEmpty() && !horaDespertar.isEmpty() && !sexo.isEmpty() && !txtNombre.getText().toString().isEmpty()&& !txtEdad.getText().toString().isEmpty()){
-                if(getIntent().hasExtra("Conf")){
-                    configuracion.deleteConfiguration();
-                    createJson(configuracion);
-                    RESULT_CODE = RESULT_OK;
-                    finish();
+                int hora_dormir = Integer.parseInt(horaDormir.split(":")[0])*60 + Integer.parseInt(horaDormir.split(":")[1]);
+                int hora_despertar = Integer.parseInt(horaDespertar.split(":")[0])*60 + Integer.parseInt(horaDespertar.split(":")[1]);
+                if(Math.abs(hora_dormir-hora_despertar) >= (4*60) ){
+                    if(getIntent().hasExtra("Conf")){
+                        configuracion.deleteConfiguration();
+                        createJson(configuracion);
+                        RESULT_CODE = RESULT_OK;
+                        finish();
+                    }else{
+                        createJson(configuracion);
+                        Toast.makeText(getApplicationContext(),"Se supone que se agrego",Toast.LENGTH_SHORT).show();
+                        Intent intent = new Intent(ConfiguracionInicial.this,MainActivity.class);
+                        startActivity(intent);
+                        finish();
+                    }
                 }else{
-                    createJson(configuracion);
-                    Toast.makeText(getApplicationContext(),"Se supone que se agrego",Toast.LENGTH_SHORT).show();
-                    Intent intent = new Intent(ConfiguracionInicial.this,MainActivity.class);
-                    startActivity(intent);
-                    finish();
+                    Toast.makeText(getApplicationContext(),"La diferencia entre la hora de dormir y la hora de despertar debe de ser de 4 horas minimo.",Toast.LENGTH_SHORT).show();
                 }
             }else{
                 Toast.makeText(getApplicationContext(),"Ingresa bien los datos",Toast.LENGTH_SHORT).show();
@@ -83,9 +98,13 @@ public class ConfiguracionInicial extends AppCompatActivity {
         });
         btnHombre.setOnClickListener(e->{
             sexo = "Hombre";
+            btnHombre.setBackgroundColor(getResources().getColor(R.color.colorAccent));
+            btnMujer.setBackgroundColor(Color.DKGRAY);
         });
         btnMujer.setOnClickListener(e->{
             sexo = "Mujer";
+            btnMujer.setBackgroundColor(getResources().getColor(R.color.colorAccent));
+            btnHombre.setBackgroundColor(Color.DKGRAY);
         });
         despertar.setOnTimeChangedListener(new TimePicker.OnTimeChangedListener() {
             @Override
@@ -147,7 +166,7 @@ public class ConfiguracionInicial extends AppCompatActivity {
         if(RESULT_CODE==RESULT_OK){
             Intent intent = new Intent();
             intent.putExtra("NuevaConf",new String[]{txtNombre.getText().toString(),
-            sexo,horaDormir,horaDespertar});
+            sexo,horaDormir,horaDespertar,txtEdad.getText().toString()});
             setResult(RESULT_CODE,intent);
         }else{
             setResult(RESULT_CODE);
