@@ -50,24 +50,14 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private Configuracion configuracion;
     private SensoresVal valores_sensores;
     private Queue<String> hora_mediciones;
-    private boolean medicionRealizada = false;
     private boolean despierto = false;
     private boolean dormido = false;
-    private boolean encuesta_contestada = false;
     private int numeroMedicionesRealizadas = 0;
     private ConstraintLayout root;
-    private ArrayList<String[]> horas = new ArrayList<>();
     private DlgResult listener;
     private Sesion currentSesion;
     private boolean noiseServiceStarted = false;
-    private boolean almostWokenUp = false;
-    private boolean medicionCancelada = false;
     private boolean sensorsStarted = false;
-    private boolean timeLoop = false;
-
-
-
-
     private boolean fourHourMark = false;
     private boolean firstMedicion = false;
     private boolean secondMedicion = false;
@@ -76,12 +66,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private boolean halfHourToSleepMark = false;
     private boolean halfHourToWakeUpMark = false;
     private boolean dlgCanceled = false;
-
-
     private CurrentTime time;
-
-    private TextView timerProximaMedicion;
-
+    private TextView timerProximaMedicion, tiempoActual;
     private String[] hora = new String[]{"0","0"};
 
     @Override
@@ -93,16 +79,13 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         configuracion = new Configuracion();
         setContentView(R.layout.activity_main);
         timerProximaMedicion = findViewById(R.id.textView2);
+        tiempoActual = findViewById(R.id.txtTiempo);
         root = findViewById(R.id.root);
         txtEdad = findViewById(R.id.txtEdadMain);
         Button btn1 = findViewById(R.id.button2);
         Button btn2 = findViewById(R.id.button3);
-
-        TextView textView = findViewById(R.id.textView2);
-
         time = CurrentTime.getInstance(getApplicationContext());
         time.addObserver(this);
-
         listener = new DlgResult() {
             @Override
             public void result(String dlgTag, Object res) {
@@ -123,7 +106,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                 }
             }
         };
-
         btn1.setOnClickListener(e->{
             if(Integer.parseInt(hora[1])+10 >= 60){
                 if(Integer.parseInt(hora[0])+1>23){
@@ -150,10 +132,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             }else{
                 hora[1] = String.valueOf(Integer.parseInt(hora[1])+1);
             }
-
             update(null,null);
         });
-
         txtNombre = findViewById(R.id.txtNombreMain);
         txtSexo = findViewById(R.id.txtSexoMain);
         txtHoraDespertar = findViewById(R.id.txtHoraDespertarMain);
@@ -170,7 +150,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         if(accelerometro == null)
             Toast.makeText(getApplicationContext(),"No tiene acelerometro!!",Toast.LENGTH_SHORT).show();
     }
-
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
@@ -183,21 +162,29 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             txtEdad.setText(conf[4]);
             pacienteActual = new Paciente(conf[0],conf[1],conf[2],conf[3],conf[4]);
             //reinicio las mediciones
-            currentSesion.resetSesion();
-            currentSesion.setPaciente(pacienteActual);
-            numeroMedicionesRealizadas = 0;
-            almostWokenUp = false;
-            medicionCancelada = false;
-            encuesta_contestada = false;
-            despierto = false;
-            dormido = false;
-            medicionRealizada = false;
-            if(sensorsStarted)
-                stopSensors();
-            generarTiemposMediciones();
+            restartMediciones();
         }else{
             Toast.makeText(getApplicationContext(),"Cancelaste el cambio en la conf",Toast.LENGTH_SHORT).show();
         }
+    }
+
+    private void restartMediciones() {
+        currentSesion.resetSesion();
+        currentSesion.setPaciente(pacienteActual);
+        numeroMedicionesRealizadas = 0;
+        despierto = false;
+        dormido = false;
+        fourHourMark = false;
+        firstMedicion = false;
+        secondMedicion = false;
+        thirdMedicion = false;
+        fourMedicion = false;
+        halfHourToSleepMark = false;
+        halfHourToWakeUpMark = false;
+        dlgCanceled = false;
+        if(sensorsStarted)
+            stopSensors();
+        generarTiemposMediciones();
     }
 
     @Override
@@ -286,6 +273,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         for(String h : hora_mediciones){
             Log.e("horaMedicion",h);
         }
+        tiempoActual.setText(hora[0]+":"+hora[1]);
         Log.e("Hora Actual", hora[0] + ":" + hora[1]);
         int horaDormir = Integer.parseInt(pacienteActual.getHora_dormir().split(":")[0]) * 60 + Integer.parseInt(pacienteActual.getHora_dormir().split(":")[1]);
         int horaDespertar = Integer.parseInt(pacienteActual.getHora_despertar().split(":")[0]) * 60 + Integer.parseInt(pacienteActual.getHora_despertar().split(":")[1]);
@@ -389,141 +377,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                 }
             }
         }
-
-        //Si son 4horas antes de dormir entonces entra
-//        if (horaActual >= (horaDormir - (4 * 60))) {
-//            Log.e("Faltan", "4 horas para dormir");
-//            if ((horaActual + 30) >= horaDormir && numeroMedicionesRealizadas == 4) {
-//                if(!sensorsStarted){
-//                    activateSensors();
-//                }
-//                //entonces son las mediciones de media hora
-//                if (!dormido) {
-//                    //antes de dormir
-//                    if (!encuesta_contestada) {
-//                        encuesta_contestada = true;
-//                        Snackbar.make(root, "Se realiza la encuesta de preocupaciones", Snackbar.LENGTH_SHORT).show();
-//                        PreocupacionesDlg dlg = new PreocupacionesDlg(this, listener);
-//                        dlg.setOnCancelListener(e -> {
-//                            Toast.makeText(getApplicationContext(), "Cancelaste el dlg", Toast.LENGTH_SHORT).show();
-//                            encuesta_contestada = false;
-//                        });
-//                        dlg.setCanceledOnTouchOutside(false);
-//                        if (!dlg.isShowing()) {
-//                            dlg.show();
-//                        }
-//                    } else {
-//                        if (horaActual >= horaDormir) {
-//                            //Aqui entra cuando ya se hizo la encuesta y se sobrepasa la hora de dormir
-//                            dormido = true;
-//                            hora_mediciones.remove(hora_mediciones.peek());
-//                            Snackbar.make(root, "Se durmio", Snackbar.LENGTH_SHORT).show();
-//                        }else{
-//                            if(valores_sensores.getDb()<=40){
-//                                if(valores_sensores.getLux()<=10){
-//                                    if(valores_sensores.getPosicionX() == previousPosition[0] && previousPosition[1] == valores_sensores.getPosicionY()){
-//                                        dormido = true;
-//                                        hora_mediciones.remove(hora_mediciones.peek());
-//                                        Snackbar.make(root, "Se durmio", Snackbar.LENGTH_SHORT).show();
-//                                    }
-//                                }
-//                            }
-//                        }
-//                    }
-//                }
-//            }else{
-//                if (horaActual >= horaActualMedicion && horaActual < horaActualMedicionMasUnaHora && numeroMedicionesRealizadas < 4) {
-//                    //Aqui se entra si aun no se realizan las cuatro mediciones y entra dentro del rango de la hora de medicion
-//                    if (!medicionRealizada) {
-//                        medicionRealizada = true;
-//                        broadcastIntent("Medicion de ritmo cardiaco");
-//                        //pedir medicion cardiaca
-//                        NivelEstresDlg dlg = new NivelEstresDlg(this, listener);
-//                        dlg.setOnDismissListener(e -> {
-//                            Snackbar.make(root, "Se realiza medicion numero " + String.valueOf(numeroMedicionesRealizadas) + " del ritmo cardiaco", Snackbar.LENGTH_SHORT).show();
-//                            DlgRitmoCardiaco dlgRitmoCardiaco = new DlgRitmoCardiaco(this, listener);
-//                            dlgRitmoCardiaco.setCanceledOnTouchOutside(false);
-//                            if (!dlgRitmoCardiaco.isShowing()&&!medicionCancelada){
-//                                dlgRitmoCardiaco.show();
-//                                dlgRitmoCardiaco.setOnCancelListener(ex->{
-//                                    medicionRealizada = false;
-//                                    hora_mediciones.remove(hora_mediciones.peek());
-//                                    currentSesion.setMeds_cardiacos(numeroMedicionesRealizadas,0);
-//                                    currentSesion.setNivel_estres(numeroMedicionesRealizadas,"NA");
-//                                    numeroMedicionesRealizadas++;
-//                                    Snackbar.make(root, "Se cancelo la medicion", Snackbar.LENGTH_SHORT).show();
-//                                    medicionCancelada = false;
-//                                });
-//                            }else{
-//                                medicionCancelada = false;
-//                            }
-//                        });
-//                        dlg.setCanceledOnTouchOutside(false);
-//                        if (!dlg.isShowing()){
-//                            dlg.show();
-//                            dlg.setOnCancelListener(e->{
-//                                medicionCancelada = true;
-//                                medicionRealizada = false;
-//                                hora_mediciones.remove(hora_mediciones.peek());
-//                                currentSesion.setMeds_cardiacos(numeroMedicionesRealizadas,0);
-//                                currentSesion.setNivel_estres(numeroMedicionesRealizadas,"NA");
-//                                numeroMedicionesRealizadas++;
-//                                Snackbar.make(root, "Se cancelo la medicion", Snackbar.LENGTH_SHORT).show();
-//                            });
-//                        }
-//                    } else {
-//                        hora_mediciones.remove(hora_mediciones.peek());
-//                        medicionRealizada = false;
-//                    }
-//                }else{
-//                    if(horaActual >= horaActualMedicionMasUnaHora && !medicionRealizada && !dormido){
-//                        hora_mediciones.remove(hora_mediciones.peek());
-//                        currentSesion.setMeds_cardiacos(numeroMedicionesRealizadas,0);
-//                        currentSesion.setNivel_estres(numeroMedicionesRealizadas,"NA");
-//                        numeroMedicionesRealizadas++;
-//                        Snackbar.make(root, "No se realizo la medicion en la pasada hora", Snackbar.LENGTH_SHORT).show();
-//                    }
-//                }
-//            }
-//        }
-//        if (horaActual>=(horaDespertar - 30) && dormido && !despierto && timeLoop) {
-//            almostWokenUp = true;
-//            //es la media hora antes de despertar
-//            if (!despierto) {
-//                //antes de despertar
-//                if(valores_sensores.getDb()<=40){
-//                    if(valores_sensores.getLux()<=10){
-//                        if(valores_sensores.getPosicionX() == previousPosition[0] && previousPosition[1] == valores_sensores.getPosicionY()){
-//                            despierto = true;
-//                            hora_mediciones.remove(hora_mediciones.peek());
-//                            Snackbar.make(root, "Se despertoxdxd", Snackbar.LENGTH_SHORT).show();
-//                            if(sensorsStarted)
-//                                stopSensors();
-//                        }
-//                    }
-//                }
-//                Snackbar.make(root, "Se checan los sensores antes de despertar", Snackbar.LENGTH_SHORT).show();
-//            }
-//        }
-//        if (horaActual - horaDespertar >= 0 && dormido && almostWokenUp && !despierto && timeLoop) {
-//            despierto = true;
-//            if(sensorsStarted)
-//                stopSensors();
-//            Snackbar.make(root, "Se desperto", Snackbar.LENGTH_SHORT).show();
-//            String imprimir = "";
-//            for(int i = 0 ; i <4 ; i++){
-//                imprimir += "Nivel de estres: "+currentSesion.getNivel_estres()[i]+" Ritmo cardiaco: "+String.valueOf(currentSesion.getMeds_cardiacos()[i])+"\n";
-//            }
-//            imprimir += "Tiene preocupaciones: "+String.valueOf(currentSesion.getTiene_preocupaciones());
-//            Toast.makeText(getApplicationContext(),imprimir,Toast.LENGTH_SHORT).show();
-//            Log.e("status obj",imprimir);
-//        }
-//        setTimerProximaMedicion(horaActual);
-//        if(Integer.parseInt(hora[0])==23 && Integer.parseInt(hora[1])==59){
-//            timeLoop = true;
-//        }
+        setTimerProximaMedicion(horaActual);
     }
-
     private void showMedicionCardiaca() {
         broadcastIntent("Medicion de ritmo cardiaco");
         //pedir medicion cardiaca
@@ -565,9 +420,18 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
     }
 
-    private void setTimerProximaMedicion(int hora){
-        int horaActualMedicion = (Integer.parseInt(hora_mediciones.peek().split(":")[0]) * 60) + Integer.parseInt(hora_mediciones.peek().split(":")[1]);
-        timerProximaMedicion.setText("Falta:\n"+String.valueOf((horaActualMedicion - hora)/60)+":"+String.valueOf((horaActualMedicion - hora)%60));
+    private void setTimerProximaMedicion(int horaActual){
+        int horaMedicion = 0;
+        int next = 0;
+        if(hora_mediciones.size()>0){
+            horaMedicion = Integer.parseInt(hora_mediciones.peek().split(":")[0])*60+Integer.parseInt(hora_mediciones.peek().split(":")[1]);
+            if(horaMedicion - horaActual < 0 ){
+                next = horaMedicion - horaActual + 1440;
+            }else{
+                next = horaMedicion - horaActual;
+            }
+        }
+        timerProximaMedicion.setText("Falta:\n"+String.valueOf((next)/60)+":"+String.valueOf((next)%60));
     }
 
     @Override
