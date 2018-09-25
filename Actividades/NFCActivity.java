@@ -29,7 +29,7 @@ public class NFCActivity extends AppCompatActivity{
     private IntentFilter[] filter;
     private String[][] techList;
     private PendingIntent nfcPendingIntent;
-    private TextView mensaje;
+    private TextView mensaje, txtSustancia;
     private ImageView img;
 
     private Sesion sesion_actual;
@@ -42,6 +42,7 @@ public class NFCActivity extends AppCompatActivity{
         tiempo_actual = CurrentTime.getInstance(getApplicationContext());
         setContentView(R.layout.nfc_layout_activity);
         img = findViewById(R.id.imageView2);
+        txtSustancia = findViewById(R.id.txtNFC);
         mensaje = findViewById(R.id.textView12);
         Intent nfcIntent = new Intent(this,getClass());
         nfcIntent.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
@@ -72,12 +73,22 @@ public class NFCActivity extends AppCompatActivity{
     @Override
     public void onResume() {
         super.onResume();
+        int horaDormir = 0;
         int tiempoActual = Integer.parseInt(tiempo_actual.getCurrentHour())*60+Integer.parseInt(tiempo_actual.getCurrentMinute());
-        int horaDormir = (Integer.parseInt(sesion_actual.getPaciente().getHora_dormir().split(":")[0])*60+Integer.parseInt(sesion_actual.getPaciente().getHora_dormir().split(":")[1])) - (4 * 60);
+        if(tiempoActual==0){
+            Toast.makeText(this,"Hubo un problema con la obtencion de la hora, por favor intentalo en un minuto.",Toast.LENGTH_LONG).show();
+            finish();
+        }
+        if(sesion_actual!=null){
+            Log.e("Tiempo Dormir",sesion_actual.getPaciente().getHora_dormir());
+            horaDormir = (Integer.parseInt(sesion_actual.getPaciente().getHora_dormir().split(":")[0])*60+Integer.parseInt(sesion_actual.getPaciente().getHora_dormir().split(":")[1])) - (4 * 60);
+        }else{
+            Toast.makeText(this,"Hubo un problema recuerda que debes tener la aplicacion abierta.",Toast.LENGTH_LONG).show();
+            finish();
+        }
         Log.e("Tiempo Actual",String.valueOf(tiempoActual));
         Log.e("Tiempo Actual",tiempo_actual.getCurrentHour()+":"+tiempo_actual.getCurrentMinute());
         Log.e("Tiempo Dormir",String.valueOf(horaDormir));
-        Log.e("Tiempo Dormir",sesion_actual.getPaciente().getHora_dormir());
         if(tiempoActual >= horaDormir && tiempoActual <= (horaDormir+(4*60))){
             if(!sesion_actual.getEsta_drogado()){
                 //Se configura el foreground dispatcher
@@ -123,15 +134,21 @@ public class NFCActivity extends AppCompatActivity{
                         if(content.equals("cafe")){
                             img.setVisibility(View.VISIBLE);
                             img.setImageResource(R.drawable.coffe);
-                            mensaje.setText("Se detecto la siguiente sustancia:\n"+content);
+                            mensaje.setText("Se detecto la siguiente sustancia:");
+                            txtSustancia.setText(content);
+                            sesion_actual.setEsta_drogado(1);
                         }else{
                             if(content.equals("Alcohol")){
                                 img.setVisibility(View.VISIBLE);
                                 img.setImageResource(R.drawable.alcohol);
-                                mensaje.setText("Se detecto la siguiente sustancia:\n"+content);
+                                mensaje.setText("Se detecto la siguiente sustancia:\n");
+                                txtSustancia.setText(content);
+                                sesion_actual.setEsta_drogado(1);
                             }else{
                                 img.setVisibility(View.INVISIBLE);
-                                mensaje.setText("Esta etiqueta no tiene soporte actualmente:\n"+content);
+                                mensaje.setText("Esta etiqueta no tiene soporte actualmente:\n");
+                                txtSustancia.setText(content);
+                                sesion_actual.setEsta_drogado(0);
                             }
                         }
 
