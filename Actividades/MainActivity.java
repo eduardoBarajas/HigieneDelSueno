@@ -250,12 +250,17 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
+        Intent intent;
         switch (item.getItemId()){
             case R.id.action_configuracion:
-                Intent intent = new Intent(this,ConfiguracionInicial.class);
+                intent = new Intent(this,ConfiguracionInicial.class);
                 intent.putExtra("Conf",new String[]{pacienteActual.getNombre(),pacienteActual.getSexo(),pacienteActual.getHora_dormir()
                 ,pacienteActual.getHora_despertar(),String.valueOf(pacienteActual.getEdad())});
                 startActivityForResult(intent,CONF_CHANGE);
+                break;
+            case R.id.action_registros:
+                intent = new Intent(this,RegistrosViewer.class);
+                startActivity(intent);
                 break;
             default: break;
         }
@@ -408,6 +413,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     }
 
     private void showPreocupacionesDlg(){
+        broadcastIntent("Tienes Alguna Preocupacion?");
         PreocupacionesDlg dlg = new PreocupacionesDlg(this, listener);
         dlg.setOnCancelListener(e -> {
             Toast.makeText(getApplicationContext(), "Cancelaste el dlg", Toast.LENGTH_SHORT).show();
