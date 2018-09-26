@@ -13,7 +13,7 @@ public class ConexionBDRegistrosDelSueno extends AsyncTask {
     private RegistrosDelSuenoDB bd;
     public ConexionBDRegistrosDelSueno(Context context){
         if(bd==null)
-            bd = Room.databaseBuilder(context,RegistrosDelSuenoDB.class,"Registros_Del_Sueno").build();
+            bd = Room.databaseBuilder(context,RegistrosDelSuenoDB.class,"Registros_Del_Sueno").fallbackToDestructiveMigration().build();
     }
 
     private List<RegistroEntity> getAllRegistrosByName(String nombre){

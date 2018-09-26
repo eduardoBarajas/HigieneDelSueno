@@ -96,12 +96,12 @@ public class DlgRitmoCardiaco extends Dialog implements SensorEventListener{
             ritmo_cardiaco_promedio = 0;
             ritmo_cardiaco = sensorEvent.values[0];
             if(mediciones.size()==0){
-                ritmo.setText(String.valueOf(ritmo_cardiaco));
+                ritmo.setText(String.valueOf((int)ritmo_cardiaco));
             }else{
                 for(Float f : mediciones){
                     ritmo_cardiaco_promedio += f;
                 }
-                ritmo.setText(String.valueOf(ritmo_cardiaco_promedio/mediciones.size()));
+                ritmo.setText(String.valueOf((int)ritmo_cardiaco_promedio/mediciones.size()));
             }
         }
     }

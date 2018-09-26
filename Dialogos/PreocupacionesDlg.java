@@ -6,20 +6,16 @@ import android.support.annotation.NonNull;
 import android.support.v7.widget.DefaultItemAnimator;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
-import android.util.Log;
 import android.widget.Button;
 import android.widget.Toast;
 
 import com.barajasoft.higienedelsueo.Adaptadores.PreocupacionesRVAdapater;
-import com.barajasoft.higienedelsueo.Datos.ConexionBDPreocupaciones;
 import com.barajasoft.higienedelsueo.Datos.PreocupacionEntity;
 import com.barajasoft.higienedelsueo.Listeners.DlgResult;
-import com.barajasoft.higienedelsueo.Listeners.OperationFinished;
 import com.barajasoft.higienedelsueo.R;
 
 import java.util.LinkedList;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
 
 public class PreocupacionesDlg extends Dialog{
     PreocupacionesRVAdapater adapter;

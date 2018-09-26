@@ -5,12 +5,8 @@ import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.support.v7.app.AppCompatActivity;
 
-import com.barajasoft.higienedelsueo.Datos.ConexionBD;
 import com.barajasoft.higienedelsueo.Datos.Configuracion;
 import com.barajasoft.higienedelsueo.R;
-
-import java.util.ArrayList;
-import java.util.concurrent.ExecutionException;
 
 public class SplashScreen extends AppCompatActivity{
     @Override

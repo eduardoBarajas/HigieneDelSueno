@@ -64,42 +64,36 @@ public class NFCActivity extends AppCompatActivity{
         }
         if(!nfcAdapter.isEnabled()){
             Toast.makeText(this,"El NFC esta deshabilitado",Toast.LENGTH_SHORT).show();
-        }else{
-            Toast.makeText(this,"El NFC esta Habilitado",Toast.LENGTH_SHORT).show();
         }
-
     }
 
     @Override
     public void onResume() {
         super.onResume();
-        int horaDormir = 0;
-        int tiempoActual = Integer.parseInt(tiempo_actual.getCurrentHour())*60+Integer.parseInt(tiempo_actual.getCurrentMinute());
-        if(tiempoActual==0){
-            Toast.makeText(this,"Hubo un problema con la obtencion de la hora, por favor intentalo en un minuto.",Toast.LENGTH_LONG).show();
-            finish();
-        }
-        if(sesion_actual!=null){
-            Log.e("Tiempo Dormir",sesion_actual.getPaciente().getHora_dormir());
-            horaDormir = (Integer.parseInt(sesion_actual.getPaciente().getHora_dormir().split(":")[0])*60+Integer.parseInt(sesion_actual.getPaciente().getHora_dormir().split(":")[1])) - (4 * 60);
-        }else{
-            Toast.makeText(this,"Hubo un problema recuerda que debes tener la aplicacion abierta.",Toast.LENGTH_LONG).show();
-            finish();
-        }
-        Log.e("Tiempo Actual",String.valueOf(tiempoActual));
-        Log.e("Tiempo Actual",tiempo_actual.getCurrentHour()+":"+tiempo_actual.getCurrentMinute());
-        Log.e("Tiempo Dormir",String.valueOf(horaDormir));
-        if(tiempoActual >= horaDormir && tiempoActual <= (horaDormir+(4*60))){
-            if(!sesion_actual.getEsta_drogado()){
-                //Se configura el foreground dispatcher
-                nfcAdapter.enableForegroundDispatch(this,nfcPendingIntent,filter,null);
-                handleIntent(getIntent());
-            }else{
-                Toast.makeText(this,"Ya se registro al menos una sustancia de dopado.",Toast.LENGTH_SHORT).show();
+        if(sesion_actual.getPaciente()!=null){
+            int horaDormir = 0;
+            int tiempoActual = Integer.parseInt(tiempo_actual.getCurrentHour())*60+Integer.parseInt(tiempo_actual.getCurrentMinute());
+            if(tiempoActual==0){
+                Toast.makeText(this,"Hubo un problema con la obtencion de la hora, por favor intentalo en un minuto.",Toast.LENGTH_LONG).show();
                 finish();
+            }else{
+                horaDormir = (Integer.parseInt(sesion_actual.getPaciente().getHora_dormir().split(":")[0])*60+Integer.parseInt(sesion_actual.getPaciente().getHora_dormir().split(":")[1])) - (4 * 60);
+                if(tiempoActual >= horaDormir && tiempoActual <= (horaDormir+(4*60))){
+                    if(!sesion_actual.getEsta_drogado()){
+                        //Se configura el foreground dispatcher
+                        nfcAdapter.enableForegroundDispatch(this,nfcPendingIntent,filter,null);
+                        handleIntent(getIntent());
+                    }else{
+                        Toast.makeText(this,"Ya se registro al menos una sustancia de dopado.",Toast.LENGTH_SHORT).show();
+                        finish();
+                    }
+                }else{
+                    Toast.makeText(this,"No se puede registrar la etiqueta, procura que sea dentro de las cuatro horas antes de dormir",Toast.LENGTH_SHORT).show();
+                    finish();
+                }
             }
         }else{
-            Toast.makeText(this,"No se puede registrar la etiqueta, procura que sea dentro de las cuatro horas antes de dormir",Toast.LENGTH_SHORT).show();
+            Toast.makeText(this,"Hubo un problema recuerda que debes tener la aplicacion abierta.",Toast.LENGTH_LONG).show();
             finish();
         }
    }

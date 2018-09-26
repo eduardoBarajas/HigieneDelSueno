@@ -8,9 +8,7 @@ import android.view.ViewGroup;
 import android.widget.TextView;
 
 import com.barajasoft.higienedelsueo.Datos.PreocupacionEntity;
-import com.barajasoft.higienedelsueo.Datos.Sesion;
 import com.barajasoft.higienedelsueo.Listeners.DlgResult;
-import com.barajasoft.higienedelsueo.Listeners.OperationFinished;
 import com.barajasoft.higienedelsueo.R;
 
 import java.util.LinkedList;
@@ -20,7 +18,6 @@ public class PreocupacionesRVAdapater extends RecyclerView.Adapter<Preocupacione
     List<PreocupacionEntity> preocupaciones = new LinkedList<>();
     DlgResult listener;
 
-    public PreocupacionesRVAdapater(){ }
 
     public PreocupacionesRVAdapater(List<PreocupacionEntity> p, DlgResult listener){
         preocupaciones = p;

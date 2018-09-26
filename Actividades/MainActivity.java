@@ -19,7 +19,9 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 import com.barajasoft.higienedelsueo.BroadcastReceivers.Alarm;
+import com.barajasoft.higienedelsueo.Datos.ConexionBDRegistrosDelSueno;
 import com.barajasoft.higienedelsueo.Datos.Configuracion;
+import com.barajasoft.higienedelsueo.Datos.RegistroEntity;
 import com.barajasoft.higienedelsueo.Datos.SensoresVal;
 import com.barajasoft.higienedelsueo.Datos.Sesion;
 import com.barajasoft.higienedelsueo.Dialogos.DlgRitmoCardiaco;
@@ -30,11 +32,17 @@ import com.barajasoft.higienedelsueo.Entidades.Paciente;
 import com.barajasoft.higienedelsueo.Listeners.DlgResult;
 import com.barajasoft.higienedelsueo.R;
 import com.barajasoft.higienedelsueo.Servicios.NoiseService;
+
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Observable;
 import java.util.Observer;
 import java.util.Queue;
+import java.util.TimeZone;
+
 import static android.Manifest.permission.RECORD_AUDIO;
 import static android.Manifest.permission.WRITE_EXTERNAL_STORAGE;
 
@@ -68,11 +76,17 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     private boolean dlgCanceled = false;
     private CurrentTime time;
     private TextView timerProximaMedicion, tiempoActual;
-    private String[] hora = new String[]{"0","0"};
+    private String[] hora = new String[]{"11","16"};
+    private Calendar calendar;
+    private SimpleDateFormat format;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        calendar = Calendar.getInstance();
+        format = new SimpleDateFormat("kk:mm");
+        format.setTimeZone(TimeZone.getTimeZone("GMT-7:00"));
+
         currentSesion = Sesion.getInstance();
         valores_sensores = SensoresVal.getInstance();
         //Obtener configuracion inicial
@@ -304,6 +318,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                     if(valores_sensores.getLux()<=10){
                         if(valores_sensores.getPosicionX() == previousPosition[0] && previousPosition[1] == valores_sensores.getPosicionY()){
                             dormido = true;
+                            currentSesion.setHora_en_que_durmio(hora[0]+":"+hora[1]);
                             Snackbar.make(root, "Segun los sensores se durmio", Snackbar.LENGTH_SHORT).show();
                         }
                     }
@@ -314,9 +329,14 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                     if(valores_sensores.getLux()>=10){
                         if(valores_sensores.getPosicionX() != previousPosition[0] || previousPosition[1] != valores_sensores.getPosicionY()){
                             despierto = true;
+                            currentSesion.setHora_en_que_desperto(hora[0]+":"+hora[1]);
                             Snackbar.make(root, "Segun los sensores se desperto", Snackbar.LENGTH_SHORT).show();
                             if(sensorsStarted)
                                 stopSensors();
+                            registerSleepSession();
+                            restartMediciones();
+                            Sesion.getInstance().resetSesion();
+                            Sesion.getInstance().setPaciente(pacienteActual);
                         }
                     }
                 }
@@ -363,6 +383,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             if(horaActual == horaDormir && !dormido){
                 Toast.makeText(getApplicationContext(),"Se Durmio",Toast.LENGTH_SHORT).show();
                 dormido = true;
+                currentSesion.setHora_en_que_durmio(hora[0]+":"+hora[1]);
             }
         }
 
@@ -372,18 +393,66 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             hora_mediciones.remove(hora_mediciones.peek());
         }
         if(halfHourToWakeUpMark){
-            if(horaActual == horaDespertar){
+            if(horaActual == horaDespertar && !despierto){
                 Toast.makeText(getApplicationContext(),"Se Desperto",Toast.LENGTH_SHORT).show();
                 despierto = true;
+                currentSesion.setHora_en_que_desperto(hora[0]+":"+hora[1]);
                 if(sensorsStarted)
                     stopSensors();
                 for(Double v : Sesion.getInstance().getMedicionesLux()){
                     Log.e("Medicion ", String.valueOf(v));
                 }
+                registerSleepSession();
+                restartMediciones();
+                Sesion.getInstance().resetSesion();
+                Sesion.getInstance().setPaciente(pacienteActual);
             }
         }
         setTimerProximaMedicion(horaActual);
     }
+
+    private void registerSleepSession() {
+        RegistroEntity registro = new RegistroEntity();
+        registro.setNombre(pacienteActual.getNombre());
+        registro.setSexo(pacienteActual.getSexo());
+        registro.setEdad(Integer.parseInt(pacienteActual.getEdad()));
+        //registro.setId_registro(1);
+        registro.setHora_en_que_durmio(currentSesion.getHora_en_que_durmio());
+        registro.setHora_en_que_desperto(currentSesion.getHora_en_que_desperto());
+        registro.setDormir(pacienteActual.getHora_dormir());
+        registro.setDespertar(pacienteActual.getHora_despertar());
+        if(currentSesion.getEsta_drogado()){
+            registro.setIngerio_sustancias(1);
+        }else{
+            registro.setIngerio_sustancias(0);
+        }
+        registro.setPreocupaciones(currentSesion.getTiene_preocupaciones());
+        registro.setFecha(currentSesion.getCurrentDate());
+        double prom = 0;
+        for(Double m : currentSesion.getMedicionesLux()){
+            prom += m;
+        }
+        if(currentSesion.getMedicionesLux().size() > 0){
+            registro.setPromedio_iluminacion(prom/currentSesion.getMedicionesLux().size());
+        }
+        prom = 0;
+        for(Double m : currentSesion.getMedicionesdB()){
+            prom += m;
+        }
+        if(currentSesion.getMedicionesdB().size()>0){
+            registro.setPromedio_ruido(prom/currentSesion.getMedicionesdB().size());
+        }
+        registro.setRitmo_cardiaco1(currentSesion.getMeds_cardiacos()[0]);
+        registro.setRitmo_cardiaco2(currentSesion.getMeds_cardiacos()[1]);
+        registro.setRitmo_cardiaco3(currentSesion.getMeds_cardiacos()[2]);
+        registro.setRitmo_cardiaco4(currentSesion.getMeds_cardiacos()[3]);
+        registro.setSensacion_estres1(currentSesion.getNivel_estres()[0]);
+        registro.setSensacion_estres2(currentSesion.getNivel_estres()[1]);
+        registro.setSensacion_estres3(currentSesion.getNivel_estres()[2]);
+        registro.setSensacion_estres4(currentSesion.getNivel_estres()[3]);
+        new ConexionBDRegistrosDelSueno(getApplicationContext()).execute("addRegistro",registro);
+    }
+
     private void showMedicionCardiaca() {
         broadcastIntent("Medicion de ritmo cardiaco");
         //pedir medicion cardiaca
@@ -453,33 +522,73 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         sendBroadcast(intent);
     }
 
-    private void generarTiemposMediciones(){
+    private void generarTiemposMediciones() {
+        String[] tiempoActual = format.format(calendar.getTime()).split(":");
         //crear pila con los horarios en que se debe checar el paciente
         hora_mediciones = new LinkedList<>();
-        for(int i=4;i>0;i--){
-            if(Integer.parseInt(pacienteActual.getHora_dormir().split(":")[0])-i<0){
-                hora_mediciones.add(String.valueOf(24+(Integer.parseInt(pacienteActual.getHora_dormir().split(":")[0])-i))+":"+pacienteActual.getHora_dormir().split(":")[1]);
-            }else{
-                hora_mediciones.add(String.valueOf(Integer.parseInt(pacienteActual.getHora_dormir().split(":")[0])-i)+":"+pacienteActual.getHora_dormir().split(":")[1]);
+        for (int i = 4; i > 0; i--) {
+            if (Integer.parseInt(pacienteActual.getHora_dormir().split(":")[0]) - i < 0) {
+                hora_mediciones.add(String.valueOf(24 + (Integer.parseInt(pacienteActual.getHora_dormir().split(":")[0]) - i)) + ":" + pacienteActual.getHora_dormir().split(":")[1]);
+            } else {
+                hora_mediciones.add(String.valueOf(Integer.parseInt(pacienteActual.getHora_dormir().split(":")[0]) - i) + ":" + pacienteActual.getHora_dormir().split(":")[1]);
             }
         }
         int mediaHoraAntesDormir = 0;
-        if(Integer.parseInt(pacienteActual.getHora_dormir().split(":")[0])==0 && Integer.parseInt(pacienteActual.getHora_dormir().split(":")[1])-30 < 0){
-            int res = Integer.parseInt(pacienteActual.getHora_dormir().split(":")[1])-30;
-            mediaHoraAntesDormir = 24*60+res;
-        }else{
-            mediaHoraAntesDormir = Integer.parseInt(pacienteActual.getHora_dormir().split(":")[0])*60+Integer.parseInt(pacienteActual.getHora_dormir().split(":")[1])-30;
+        if (Integer.parseInt(pacienteActual.getHora_dormir().split(":")[0]) == 0 && Integer.parseInt(pacienteActual.getHora_dormir().split(":")[1]) - 30 < 0) {
+            int res = Integer.parseInt(pacienteActual.getHora_dormir().split(":")[1]) - 30;
+            mediaHoraAntesDormir = 24 * 60 + res;
+        } else {
+            mediaHoraAntesDormir = Integer.parseInt(pacienteActual.getHora_dormir().split(":")[0]) * 60 + Integer.parseInt(pacienteActual.getHora_dormir().split(":")[1]) - 30;
         }
-        hora_mediciones.add(String.valueOf(mediaHoraAntesDormir/60)+":"+String.valueOf(mediaHoraAntesDormir%60));
+        hora_mediciones.add(String.valueOf(mediaHoraAntesDormir / 60) + ":" + String.valueOf(mediaHoraAntesDormir % 60));
 
         int mediaHoraAntesDespertar = 0;
-        if(Integer.parseInt(pacienteActual.getHora_despertar().split(":")[0])==0 && Integer.parseInt(pacienteActual.getHora_despertar().split(":")[1])-30 < 0){
-            int res = Integer.parseInt(pacienteActual.getHora_despertar().split(":")[1])-30;
-            mediaHoraAntesDespertar = 24*60+res;
-        }else{
-            mediaHoraAntesDespertar = Integer.parseInt(pacienteActual.getHora_despertar().split(":")[0])*60+Integer.parseInt(pacienteActual.getHora_despertar().split(":")[1])-30;
+        if (Integer.parseInt(pacienteActual.getHora_despertar().split(":")[0]) == 0 && Integer.parseInt(pacienteActual.getHora_despertar().split(":")[1]) - 30 < 0) {
+            int res = Integer.parseInt(pacienteActual.getHora_despertar().split(":")[1]) - 30;
+            mediaHoraAntesDespertar = 24 * 60 + res;
+        } else {
+            mediaHoraAntesDespertar = Integer.parseInt(pacienteActual.getHora_despertar().split(":")[0]) * 60 + Integer.parseInt(pacienteActual.getHora_despertar().split(":")[1]) - 30;
         }
-        hora_mediciones.add(String.valueOf(mediaHoraAntesDespertar/60)+":"+String.valueOf(mediaHoraAntesDespertar%60));
+        hora_mediciones.add(String.valueOf(mediaHoraAntesDespertar / 60) + ":" + String.valueOf(mediaHoraAntesDespertar % 60));
+        int indiceMedicion = -1;
+        //int horaActual = Integer.parseInt(tiempoActual[0])*60+Integer.parseInt(tiempoActual[1]);
+        int horaActual = Integer.parseInt(hora[0]) * 60 + Integer.parseInt(hora[1]);
+        List<String> eliminados = new LinkedList<>();
+        for (String med : hora_mediciones) {
+            Log.e("MedicionActual", med);
+            int medicionActual = Integer.parseInt(med.split(":")[0]) * 60 + Integer.parseInt(med.split(":")[1]);
+            if (horaActual >= medicionActual && medicionActual != mediaHoraAntesDespertar)
+                eliminados.add(med);
+        }
+        for (int i = 0; i < eliminados.size(); i++) {
+            switch (i) {
+                case 0:
+                    firstMedicion = true;
+                    break;
+                case 1:
+                    secondMedicion = true;
+                    break;
+                case 2:
+                    thirdMedicion = true;
+                    break;
+                case 3:
+                    fourMedicion = true;
+                    break;
+                case 4:
+                    halfHourToSleepMark = true;
+                    break;
+
+            }
+            if (i != 4) {
+                currentSesion.setMeds_cardiacos(numeroMedicionesRealizadas, 0);
+                currentSesion.setNivel_estres(numeroMedicionesRealizadas, "NA");
+                numeroMedicionesRealizadas++;
+            } else {
+                Sesion.getInstance().setTiene_preocupaciones(-1); //menos uno por que fue cancelado
+            }
+            fourHourMark = true;
+            hora_mediciones.remove(eliminados.get(i));
+        }
     }
 
     private void activateSensors(){
@@ -499,8 +608,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         Alarm alarm = Alarm.getInstance();
         alarm.cancelAlarm(getApplicationContext());
         Log.e("ServicoAudio","SE cancelo");
-        CurrentTime timer = CurrentTime.getInstance(getApplicationContext());
-        timer.stop();
+        time.stop();
         Log.e("Temporizador","SE cancelo");
     }
 

@@ -19,4 +19,6 @@ public interface InterfazDAORegistrosDelSueno {
 
     @Delete
     void delete(RegistroEntity registro);
+
+
 }
